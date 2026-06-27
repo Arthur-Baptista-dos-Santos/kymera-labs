@@ -102,7 +102,7 @@ def _app_principal():
 
         pagina = st.radio(
             "Navegação",
-            ["Dashboard", "Motores", "KYRA - Agente IA", "MLflow"],
+            ["Dashboard", "Motores", "Tempo Real", "KYRA - Agente IA", "MLflow"],
             label_visibility="collapsed",
         )
 
@@ -117,6 +117,8 @@ def _app_principal():
         _pagina_dashboard(requests)
     elif pagina == "Motores":
         _pagina_motores(requests)
+    elif pagina == "Tempo Real":
+        _pagina_tempo_real()
     elif pagina == "KYRA - Agente IA":
         _pagina_kyra(requests)
     elif pagina == "MLflow":
@@ -320,6 +322,153 @@ def _pagina_kyra(requests):
         ]
         for e in exemplos:
             st.code(e)
+
+
+def _pagina_tempo_real():
+    import asyncio
+    import json
+    import threading
+    import websocket
+    import plotly.graph_objects as go
+    from collections import deque
+    from datetime import datetime
+
+    st.markdown("## Monitoramento em Tempo Real")
+    st.caption("Leituras dos sensores transmitidas via WebSocket a cada 2 segundos.")
+
+    if "ws_ativo" not in st.session_state:
+        st.session_state.ws_ativo = False
+    if "ws_historico" not in st.session_state:
+        st.session_state.ws_historico = {}
+    if "ws_ultimas" not in st.session_state:
+        st.session_state.ws_ultimas = {}
+
+    col_btn1, col_btn2, _ = st.columns([1, 1, 3])
+
+    with col_btn1:
+        iniciar = st.button("Iniciar Stream", type="primary", use_container_width=True,
+                            disabled=st.session_state.ws_ativo)
+    with col_btn2:
+        parar = st.button("Parar", use_container_width=True,
+                          disabled=not st.session_state.ws_ativo)
+
+    placeholder_status = st.empty()
+    placeholder_metricas = st.empty()
+    placeholder_grafico = st.empty()
+    placeholder_tabela = st.empty()
+
+    if parar:
+        st.session_state.ws_ativo = False
+        st.session_state.ws_historico = {}
+        st.session_state.ws_ultimas = {}
+        st.rerun()
+
+    if iniciar:
+        st.session_state.ws_ativo = True
+        st.session_state.ws_historico = {}
+        st.session_state.ws_ultimas = {}
+
+    if st.session_state.ws_ativo:
+        placeholder_status.success("Stream ativo - recebendo leituras dos motores...")
+
+        import time
+        import urllib.request
+
+        for _ in range(10):
+            try:
+                ws = websocket.create_connection(
+                    "ws://localhost:8502/ws/sensores",
+                    timeout=3,
+                )
+                msg = ws.recv()
+                dados = json.loads(msg)
+                ws.close()
+
+                motor_id = dados["motor_id"]
+                ts = datetime.now().strftime("%H:%M:%S")
+
+                if motor_id not in st.session_state.ws_historico:
+                    st.session_state.ws_historico[motor_id] = deque(maxlen=30)
+
+                st.session_state.ws_historico[motor_id].append({
+                    "ts": ts,
+                    "temp_saida_hpc": dados.get("temp_saida_hpc", 0),
+                    "eficiencia_hpc": dados.get("eficiencia_hpc", 0),
+                    "velocidade_core": dados.get("velocidade_core", 0),
+                })
+                st.session_state.ws_ultimas[motor_id] = dados
+
+            except Exception:
+                break
+
+            time.sleep(2)
+
+        ultimas = st.session_state.ws_ultimas
+        historico = st.session_state.ws_historico
+
+        if ultimas:
+            import pandas as pd
+
+            with placeholder_metricas.container():
+                st.markdown("**Última leitura por motor:**")
+                cols = st.columns(min(len(ultimas), 5))
+                for i, (mid, d) in enumerate(sorted(ultimas.items())[:5]):
+                    cols[i].metric(
+                        f"Motor {mid}",
+                        f"Ciclo {d.get('ciclo', '?')}",
+                        delta=f"T={d.get('temp_saida_hpc', 0):.0f}K",
+                    )
+
+            motor_sel = sorted(historico.keys())[0]
+            hist = list(historico[motor_sel])
+
+            if len(hist) > 1:
+                df_hist = pd.DataFrame(hist)
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=df_hist["ts"],
+                    y=df_hist["temp_saida_hpc"],
+                    mode="lines+markers",
+                    name="Temp. saida HPC",
+                    line=dict(color="#58a6ff"),
+                ))
+                fig.add_trace(go.Scatter(
+                    x=df_hist["ts"],
+                    y=df_hist["velocidade_core"],
+                    mode="lines+markers",
+                    name="Velocidade core",
+                    line=dict(color="#3fb950"),
+                    yaxis="y2",
+                ))
+                fig.update_layout(
+                    title=f"Motor {motor_sel} - Sensores em Tempo Real",
+                    paper_bgcolor="#161b22",
+                    plot_bgcolor="#0d1117",
+                    font_color="#c9d1d9",
+                    yaxis=dict(title="Temperatura (K)", color="#58a6ff"),
+                    yaxis2=dict(title="Velocidade", overlaying="y", side="right",
+                                color="#3fb950"),
+                    legend=dict(bgcolor="#161b22"),
+                )
+                placeholder_grafico.plotly_chart(fig, use_container_width=True)
+
+            df_tab = pd.DataFrame([
+                {
+                    "Motor": mid,
+                    "Ciclo": d.get("ciclo", "-"),
+                    "Temp. HPC (K)": round(d.get("temp_saida_hpc", 0), 2),
+                    "Efic. HPC": round(d.get("eficiencia_hpc", 0), 5),
+                    "Vel. Core": round(d.get("velocidade_core", 0), 2),
+                    "Pressão LPT": round(d.get("pressao_saida_lpt", 0), 2),
+                }
+                for mid, d in sorted(ultimas.items())
+            ])
+            placeholder_tabela.dataframe(df_tab, use_container_width=True, hide_index=True)
+
+        time.sleep(2)
+        st.rerun()
+    else:
+        placeholder_status.info("Clique em 'Iniciar Stream' para começar a receber leituras em tempo real.")
 
 
 def _pagina_mlflow():
