@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+dados/raw/
+modelos/
+mlruns/
+*.db
+*.duckdb
+relatorios/
+.pytest_cache/
+htmlcov/

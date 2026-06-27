@@ -1,0 +1,71 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: kymera-postgres
+    environment:
+      POSTGRES_USER: kymera
+      POSTGRES_PASSWORD: kymera_secret
+      POSTGRES_DB: kymera_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - kymera_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kymera -d kymera_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kymera-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - kymera_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: kymera-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - kymera_chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.13.0
+    container_name: kymera-mlflow
+    ports:
+      - "5001:5000"
+    volumes:
+      - kymera_mlflow_data:/mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --default-artifact-root /mlflow/artifacts
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  kymera_postgres_data:
+  kymera_redis_data:
+  kymera_chroma_data:
+  kymera_mlflow_data:
