@@ -18,6 +18,8 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-ff4b4b)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
 ![JWT](https://img.shields.io/badge/JWT-Autenticação-black)
+![CI](https://github.com/Arthur-Baptista-dos-Santos/kymera-labs/actions/workflows/ci.yml/badge.svg?branch=main)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -53,29 +55,38 @@ ChromaDB  XGBoost  IsoForest  Todos os motores
 
 ```
 kymera-labs/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # CI: testes, ruff, treinamento automatizado
 ├── backend/
 │   ├── agente/
-│   │   ├── rag.py          # Pipeline RAG com ChromaDB + nomic-embed-text
-│   │   └── roteador.py     # KYRA: roteamento deterministico + sintese LLM
+│   │   ├── rag.py              # Pipeline RAG com ChromaDB + nomic-embed-text
+│   │   └── roteador.py         # KYRA: roteamento deterministico + sintese LLM
 │   ├── api/
-│   │   └── app.py          # FastAPI: REST + WebSocket (porta 8502)
+│   │   └── app.py              # FastAPI: REST + WebSocket (porta 8502)
 │   ├── ml/
-│   │   ├── features.py     # Engenharia de features (71 features por motor)
-│   │   ├── preditor.py     # Inferencia: RUL e deteccao de anomalias
-│   │   └── treinar.py      # Treinamento XGBoost + Isolation Forest
+│   │   ├── features.py         # Engenharia de features (71 features por motor)
+│   │   ├── preditor.py         # Inferencia: RUL e deteccao de anomalias
+│   │   └── treinar.py          # Treinamento XGBoost + Isolation Forest
 │   └── seguranca/
-│       └── auth.py         # JWT HS256 + bcrypt
+│       └── auth.py             # JWT HS256 + bcrypt
 ├── dados/
-│   ├── gerar_dados.py      # Gerador sintetico padrao NASA CMAPSS
-│   └── raw/                # CSVs de treino e teste (gitignored)
-├── documentos/             # Base de conhecimento para RAG (31 chunks)
+│   ├── gerar_dados.py          # Gerador sintetico padrao NASA CMAPSS
+│   └── raw/                    # CSVs de treino e teste (gitignored)
+├── dags/
+│   └── pipeline_dag.py         # DAG Apache Airflow para retreinamento agendado
+├── documentos/                 # Base de conhecimento para RAG (31 chunks)
 │   ├── guia_alertas.md
 │   ├── manual_sensores.md
 │   └── procedimentos_manutencao.md
 ├── frontend/
-│   └── app.py              # Dashboard Streamlit (porta 8503)
-├── modelos/                # Modelos treinados .pkl (gitignored)
-├── docker-compose.yml      # PostgreSQL, Redis, ChromaDB, MLflow
+│   └── app.py                  # Dashboard Streamlit (porta 8503)
+├── modelos/                    # Modelos treinados .pkl (gitignored)
+├── tests/
+│   ├── test_api.py             # Testes de integração dos endpoints
+│   ├── test_ml.py              # Testes unitários dos modelos
+│   └── test_agente.py          # Testes do roteador KYRA
+├── docker-compose.yml          # PostgreSQL, Redis, ChromaDB, MLflow
 ├── .env.example
 └── requirements.txt
 ```
@@ -110,6 +121,17 @@ kymera-labs/
 
 ---
 
+## `Demonstração`
+
+> Screenshots e GIF do dashboard em breve.
+
+Após rodar o projeto, acesse:
+- **Dashboard:** `http://localhost:8503`
+- **Swagger UI:** `http://localhost:8502/docs`
+- **MLflow:** `http://localhost:5001`
+
+---
+
 ## `Pré-requisitos`
 
 - Python 3.10+
@@ -130,14 +152,16 @@ git clone https://github.com/Arthur-Baptista-dos-Santos/kymera-labs.git
 cd kymera-labs
 
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Linux/Mac
 
 pip install -r requirements.txt
 ```
 
 ```bash
 # Copiar e configurar variaveis de ambiente
-cp .env.example .env
+cp .env.example .env          # Linux/Mac
+# copy .env.example .env      # Windows
 
 # Subir a infraestrutura (PostgreSQL, Redis, ChromaDB, MLflow)
 docker compose up -d
@@ -160,20 +184,16 @@ uvicorn backend.api.app:app --host 0.0.0.0 --port 8502 --reload
 streamlit run frontend/app.py --server.port 8503
 ```
 
-Acesse `http://localhost:8503`, faça login com `admin / kymera2026` e explore o dashboard.
-
-Swagger UI disponível em `http://localhost:8502/docs` - MLflow em `http://localhost:5001`.
-
 ---
 
 ## `Autenticação`
+
+> Estas são credenciais de demonstração para uso local. Troque as senhas e o `JWT_SECRET_KEY` no `.env` antes de qualquer deploy.
 
 | Usuário | Senha | Perfil |
 |---|---|---|
 | `admin` | `kymera2026` | Acesso total |
 | `operador` | `operador123` | Acesso de leitura |
-
-> Troque as senhas e o `JWT_SECRET_KEY` no `.env` antes de qualquer deploy em produção.
 
 ---
 
@@ -188,3 +208,21 @@ Swagger UI disponível em `http://localhost:8502/docs` - MLflow em `http://local
 - **`Docker Compose`**: infraestrutura completa reprodutível em um comando
 - **`Ollama`**: inferência local de LLMs sem custo de API e com privacidade total dos dados industriais
 - **`NASA CMAPSS`**: padrão de dataset de degradação de turbofans usado como referência na literatura de manutenção preditiva
+- **`Apache Airflow`**: orquestração de DAG para retreinamento automatizado e agendado dos modelos
+- **`Pytest + Ruff`**: testes automatizados e verificação de qualidade de código no pipeline de CI
+
+---
+
+## `Licença`
+
+Distribuído sob a licença MIT. Veja [LICENSE](LICENSE) para mais informações.
+
+---
+
+## `Autor`
+
+**Arthur Baptista dos Santos**
+RM 565346 — Inteligência Artificial · FIAP 2025–2026
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Arthur%20Baptista-0077B5?logo=linkedin)](https://linkedin.com/in/arthur-baptista-dos-santos)
+[![GitHub](https://img.shields.io/badge/GitHub-Arthur--Baptista--dos--Santos-181717?logo=github)](https://github.com/Arthur-Baptista-dos-Santos)
