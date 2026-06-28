@@ -75,6 +75,8 @@ kymera-labs/
 │   └── raw/                    # CSVs de treino e teste (gitignored)
 ├── dags/
 │   └── pipeline_dag.py         # DAG Apache Airflow para retreinamento agendado
+├── docs/
+│   └── screenshots/            # Capturas de tela do dashboard
 ├── documentos/                 # Base de conhecimento para RAG (31 chunks)
 │   ├── guia_alertas.md
 │   ├── manual_sensores.md
@@ -123,7 +125,23 @@ kymera-labs/
 
 ## `Demonstração`
 
-> Screenshots e GIF do dashboard em breve.
+**Painel de controle da Frota** — KPIs em tempo real, distribuição de status e motores urgentes por RUL restante.
+
+![Painel da Frota](docs/screenshots/dashboard-frota.png)
+
+---
+
+**KYRA — Agente de Inteligência Industrial** — roteamento automático entre RAG, predição de RUL e detecção de anomalias, com síntese em linguagem natural.
+
+![KYRA Agente IA](docs/screenshots/kyra-agente.png)
+
+---
+
+**Monitoramento em Tempo Real** — stream de sensores via WebSocket com gráfico ao vivo e tabela de leituras por motor.
+
+![Tempo Real WebSocket](docs/screenshots/tempo-real.png)
+
+---
 
 Após rodar o projeto, acesse:
 - **Dashboard:** `http://localhost:8503`
